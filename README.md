@@ -48,7 +48,7 @@ This tool takes an Audible book URL, cleans it, extracts relevant information, a
    - The array is now ready to be pasted directly into `PasteArray.ahk`
 
 3. **Set up AutoHotkey:**
-   - Open `PasteArray.ahk` and replace the array on line 2 with your copied values (or keep the existing array if you prefer).
+   - Open `PasteArray.ahk` and replace the array on line 5 with your copied values.
    - Launch `PasteArray.ahk` (double-click the file or run it with AutoHotkey).
 
 4. **Paste into your database:**
