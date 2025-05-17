@@ -1,6 +1,11 @@
 const {Builder, By, until} = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const minimist = require('minimist');
+// Using dynamic import for clipboardy ESM module
+let writeToClipboard = async (text) => {
+    const { default: clipboard } = await import('clipboardy');
+    return clipboard.write(text);
+};
 
 const readline = require('readline');
 
@@ -164,7 +169,15 @@ async function runScraper(url) {
         console.log(JSON.stringify(output, null, 4));
         // Flatten array values in output
         const flatValues = Object.values(output).flatMap(v => Array.isArray(v) ? v : [v]);
-        console.log('Values array:', JSON.stringify(flatValues));
+        const valuesString = JSON.stringify(flatValues);
+        console.log('Values array:', valuesString);
+        
+        try {
+            await writeToClipboard(valuesString);
+            console.log('✓ Values array copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err.message);
+        }
     } finally {
         await driver.quit();
     }

@@ -10,7 +10,8 @@ This tool takes an Audible book URL, cleans it, extracts relevant information, a
 
 - Accepts an Audible book URL as input.
 - Extracts and flattens book information (e.g., title, author, narrator, length, release date, etc.).
-- Outputs the data in an array format suitable for pasting.
+- Automatically copies the values array to your system clipboard.
+- Outputs the data in both formatted JSON and flattened array formats.
 - Integrates with `PasteArray.ahk` for quick database entry.
 
 ## Requirements
@@ -42,11 +43,13 @@ This tool takes an Audible book URL, cleans it, extracts relevant information, a
     node audible-scrapper.js --url="<audible-book-url>"
     ```
 
-2. **Copy the Value Array.**
+2. **The values array is automatically copied to your clipboard!** 🎉
+   - Look for the success message: `✓ Values array copied to clipboard!`
+   - The array is now ready to be pasted directly into `PasteArray.ahk`
 
 3. **Set up AutoHotkey:**
-    - Paste the Value Array into `PasteArray.ahk` line 2 and save the file.
-    - Launch `PasteArray.ahk` (double-click the file or run it with AutoHotkey).
+   - Open `PasteArray.ahk` and replace the array on line 2 with your copied values (or keep the existing array if you prefer).
+   - Launch `PasteArray.ahk` (double-click the file or run it with AutoHotkey).
 
 4. **Paste into your database:**
     - With `PasteArray.ahk` running, press `Alt+q` to paste the array into your database entry form.
@@ -65,19 +68,25 @@ Audible link: https://www.audible.com/pd/example-book
 ```
 
 Output:
-```
+```json
 {
-    "title": "",
-    "author": "",
-    "narrator": [],
-    "link": "",
-    "category": "",
-    "publisher": "",
-    "date": "",
-    "publisher": "",
-    "date": "",
-    "genre": []
+    "title": "The Zoologist's Guide to the Galaxy",
+    "author": "Arik Kershenbaum",
+    "narrator": ["Samuel West"],
+    "link": "https://www.audible.com/pd/The-Zoologists-Guide-to-the-Galaxy-Audiobook/0593394380",
+    "category": "Science & Engineering",
+    "publisher": "Penguin Audio",
+    "date": "2021/03/16",
+    "genre": [
+        "Animals",
+        "Biological Sciences",
+        "Evolution",
+        "Evolution & Genetics",
+        "Science",
+        "Animal Behavior"
+    ]
 }
 
-Value array: []
+Values array: ["The Zoologist's Guide to the Galaxy","Arik Kershenbaum","Samuel West","https://www.audible.com/pd/The-Zoologists-Guide-to-the-Galaxy-Audiobook/0593394380","Science & Engineering","Penguin Audio","2021/03/16","Animals","Biological Sciences","Evolution","Evolution & Genetics","Science","Animal Behavior"]
+✓ Values array copied to clipboard!
 ```
