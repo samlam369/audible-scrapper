@@ -57,13 +57,13 @@ This tool takes an Audible book URL, cleans it, extracts relevant information, a
 ## Example
 
 ```sh
-> node .\audible-scrapper.js --url="https://www.audible.com/pd/example-book"
+> node audible-scrapper.js --url="https://www.audible.com/pd/example-book"
 ```
 
 Or
 
 ```sh
-> node .\audible-scrapper.js
+> node audible-scrapper.js
 Audible link: https://www.audible.com/pd/example-book
 ```
 
