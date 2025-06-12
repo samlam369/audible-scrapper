@@ -63,87 +63,47 @@ async function runScraper(url) {
             }
         } catch (e) {}
 
-        // Extract publishing date from DOM
+        // Extract publishing date in MM-DD-YY format from the page
         let date = '';
-        // First, try to extract from shadowRoot as suggested by user
         try {
-            let releaseDateText = await driver.executeScript(() => {
-                try {
-                    // Traverse to the shadow DOM and get the text content
-                    const meta = document.querySelector('#center-1-2 > adbl-style-scope > adbl-product-details > adbl-product-metadata');
-                    if (!meta || !meta.shadowRoot) return '';
-                    const el = meta.shadowRoot.querySelector('#container > div:nth-child(1) > div.values > div > div.text');
-                    return el ? el.textContent.trim() : '';
-                } catch (e) { return ''; }
+            // First try to find the date directly in the page
+            const dateMatch = await driver.executeScript(() => {
+                // Look for the date in the format MM-DD-YY
+                const dateRegex = /(\d{2}-\d{2}-\d{2})/;
+                const match = document.body.textContent.match(dateRegex);
+                return match ? match[0] : '';
             });
-            if (releaseDateText) {
-                // Try to convert MM-DD-YY or MM/DD/YY or similar to YYYY/MM/DD
-                let d = releaseDateText.match(/(\d{2})[\/-](\d{2})[\/-](\d{2,4})/);
-                if (d) {
-                    let y = d[3];
-                    if (y.length === 2) {
-                        y = parseInt(y) < 50 ? '20' + y : '19' + y;
+
+            if (dateMatch) {
+                const [_, month, day, year] = dateMatch.match(/(\d{2})-(\d{2})-(\d{2})/);
+                date = `20${year}/${month}/${day}`; // Assuming 21st century
+            } else {
+                // Fallback: Try to find by label if direct match fails
+                const labels = await driver.findElements(
+                    By.xpath("//*[contains(translate(., 'RELEASE', 'release'), 'release date')]")
+                );
+
+                for (const label of labels) {
+                    try {
+                        const valueElement = await driver.executeScript(
+                            'return arguments[0].nextElementSibling;', label
+                        );
+                        if (valueElement) {
+                            const rawDate = await valueElement.getText();
+                            const match = rawDate.match(/(\d{2}-\d{2}-\d{2})/);
+                            if (match) {
+                                const [_, month, day, year] = match[0].match(/(\d{2})-(\d{2})-(\d{2})/);
+                                date = `20${year}/${month}/${day}`;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[DEBUG] Error processing date element:', e);
                     }
-                    date = `${y}/${d[1]}/${d[2]}`;
                 }
             }
-        } catch (e) {console.error('[DEBUG] Error extracting releaseDate from shadowRoot:', e);}
-
-        // Fallback: previous methods
-        if (!date) {
-            try {
-                let releaseDateRaw = '';
-                for (let i = 0; i < 10; ++i) {
-                    releaseDateRaw = await driver.executeScript(() => {
-                        const meta = document.querySelector('adbl-product-metadata');
-                        if (!meta) return '';
-                        const scripts = Array.from(meta.querySelectorAll(':scope > script[type="application/json"]'));
-                        for (const script of scripts) {
-                            try {
-                                const data = JSON.parse(script.textContent);
-                                if (data.releaseDate) return data.releaseDate;
-                            } catch (e) {}
-                        }
-                        return '';
-                    });
-                    if (releaseDateRaw) break;
-                    await new Promise(res => setTimeout(res, 500));
-                }
-                if (releaseDateRaw) {
-                    let d = releaseDateRaw.match(/(\d{2})-(\d{2})-(\d{2,4})/);
-                    if (d) {
-                        let y = d[3];
-                        if (y.length === 2) {
-                            y = parseInt(y) < 50 ? '20' + y : '19' + y;
-                        }
-                        date = `${y}/${d[1]}/${d[2]}`;
-                    }
-                }
-            } catch (e) {console.error('[DEBUG] Error extracting releaseDate from JSON:', e);}
-        }
-
-        // Fallback: old logic (labels and meta tags)
-        if (!date) {
-            try {
-                const labels = await driver.findElements(By.xpath("//*[contains(text(),'Release date') or contains(text(),'Published') or contains(text(),'Publication date')]/following-sibling::*[1]"));
-                if (labels.length > 0) {
-                    let rawDate = await labels[0].getText();
-                    let d = rawDate.match(/(\d{2,4})[\/-](\d{2})[\/-](\d{2,4})/);
-                    if (d) {
-                        let y = d[1].length === 4 ? d[1] : d[3];
-                        let m = d[1].length === 4 ? d[2] : d[1];
-                        let day = d[1].length === 4 ? d[3] : d[2];
-                        date = `${y}/${m}/${day}`;
-                    } else {
-                        let d2 = rawDate.match(/([A-Za-z]+) (\d{1,2}), (\d{4})/);
-                        if (d2) {
-                            const months = {January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
-                            let mm = months[d2[1]] || '01';
-                            date = `${d2[3]}/${mm}/${d2[2].padStart(2,'0')}`;
-                        }
-                    }
-                }
-            } catch (e) {}
+        } catch (e) {
+            console.error('[DEBUG] Error in date extraction:', e);
         }
         if (!date) {
             try {
