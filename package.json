@@ -2,6 +2,7 @@
   "dependencies": {
     "clipboardy": "^4.0.0",
     "minimist": "^1.2.8",
+    "ora": "^7.0.1",
     "selenium-webdriver": "^4.32.0"
   }
 }

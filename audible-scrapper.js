@@ -12,7 +12,12 @@ const readline = require('readline');
 async function runScraper(url) {
     // Remove query params from URL for output
     const cleanUrl = url.split('?')[0];
-
+    
+    // Dynamically import ora
+    const { default: ora } = await import('ora');
+    // Create spinner
+    const spinner = ora('Loading page...').start();
+    
     // Start Selenium
     let options = new chrome.Options();
     try {
@@ -23,12 +28,43 @@ async function runScraper(url) {
         options.addArguments('--headless');
     }
     let driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+    
+    // Exponential backoff parameters
+    const maxRetries = 4;
+    let currentRetry = 0;
+    let timeoutMs = 30000; // Start with 30 seconds
+    
     try {
         await driver.get(url);
-        // Wait for digitalData to be available
-        await driver.wait(async () => {
-            return await driver.executeScript('return typeof digitalData !== "undefined" && digitalData.product && digitalData.product[0]');
-        }, 10000);
+        spinner.text = 'Page loaded, waiting for data to be available...';
+        
+        // Retry logic with exponential backoff
+        let success = false;
+        while (currentRetry < maxRetries && !success) {
+            try {
+                // Wait for digitalData to be available with current timeout
+                await driver.wait(async () => {
+                    return await driver.executeScript('return typeof digitalData !== "undefined" && digitalData.product && digitalData.product[0]');
+                }, timeoutMs);
+                success = true;
+                spinner.succeed('Data loaded successfully');
+            } catch (error) {
+                currentRetry++;
+                if (currentRetry >= maxRetries) {
+                    spinner.fail(`Failed to load data after ${maxRetries} attempts`);
+                    throw error;
+                }
+                
+                // Double the timeout for the next attempt (exponential backoff)
+                if (currentRetry === 1) {
+                    timeoutMs = 60000; // 1 minute
+                } else {
+                    timeoutMs = 120000; // 2 minutes for remaining attempts
+                }
+                
+                spinner.text = `Attempt ${currentRetry}/${maxRetries} failed. Retrying with ${timeoutMs/1000}s timeout...`;
+            }
+        }
 
         // Extract info from digitalData
         const info = await driver.executeScript(() => {
@@ -151,7 +187,11 @@ async function runScraper(url) {
         } catch (err) {
             console.error('Failed to copy to clipboard:', err.message);
         }
+    } catch (error) {
+        spinner.fail(`Error: ${error.message}`);
+        throw error;
     } finally {
+        spinner.stop();
         await driver.quit();
     }
 }
