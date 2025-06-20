@@ -48,6 +48,18 @@ async function runScraper(url) {
                 return {};
             }
         });
+        
+        // Extract subtitle if it exists (specifically from the adbl-title-lockup element with slot="subtitle")
+        let subtitle = '';
+        try {
+            subtitle = await driver.executeScript(() => {
+                // Look specifically for the h2 with slot="subtitle" within adbl-title-lockup
+                const subtitleElement = document.querySelector('adbl-title-lockup h2[slot="subtitle"]');
+                return subtitleElement ? subtitleElement.textContent.trim() : '';
+            });
+        } catch (e) {
+            console.error('[DEBUG] Error extracting subtitle:', e);
+        }
 
         // Extract genres (as array) from <adbl-chip-group class='product-topictag-impression'>
         let genres = [];
@@ -118,6 +130,7 @@ async function runScraper(url) {
         // Compose output
         const output = {
             title: info.title || '',
+            ...(subtitle ? { subtitle } : {}), // Add subtitle only if it exists
             author: info.author || '',
             narrator: Array.isArray(info.narrator) ? info.narrator.filter(Boolean) : (info.narrator ? [info.narrator] : []),
             link: cleanUrl,
