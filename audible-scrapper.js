@@ -147,7 +147,7 @@ async function runScraper(url) {
         
         try {
             await writeToClipboard(valuesString);
-            console.log('✓ Values array copied to clipboard!');
+            console.log('✓ Values array copied to clipboard!\n');
         } catch (err) {
             console.error('Failed to copy to clipboard:', err.message);
         }
@@ -159,22 +159,41 @@ async function runScraper(url) {
 (async function main() {
     const argv = minimist(process.argv.slice(2));
     let url = argv.url;
-    if (!url) {
-        // Prompt for URL
+    
+    // Create a function to prompt for URL that we can call repeatedly
+    async function promptForUrl() {
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        url = await new Promise((resolve) => {
+        return new Promise((resolve) => {
             rl.question('Audible link: ', (answer) => {
                 rl.close();
                 resolve(answer.trim());
             });
         });
     }
+    
+    // If URL wasn't provided as a command line argument, prompt for it
     if (!url) {
-        console.error('No URL provided. Exiting.');
-        process.exit(1);
+        url = await promptForUrl();
     }
-    await runScraper(url);
+    
+    // Main processing loop
+    while (url) {
+        if (!url) {
+            console.error('No URL provided. Exiting.');
+            process.exit(1);
+        }
+        
+        // Process the current URL
+        await runScraper(url);
+        
+        // Prompt for the next URL
+        url = await promptForUrl();
+    }
+    
+    // If we get here with no URL, exit gracefully
+    console.log('No URL provided. Exiting.');
+    process.exit(0);
 })();
