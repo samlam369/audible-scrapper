@@ -32,26 +32,42 @@ async function runScraper(url) {
     // Exponential backoff parameters
     const maxRetries = 4;
     let currentRetry = 0;
-    let timeoutMs = 30000; // Start with 30 seconds
+    let timeoutMs = 5000; // Start with 5 seconds for first attempt
     
     try {
-        await driver.get(url);
-        spinner.text = 'Page loaded, waiting for data to be available...';
-        
         // Retry logic with exponential backoff
         let success = false;
         while (currentRetry < maxRetries && !success) {
             try {
-                // Wait for digitalData to be available with current timeout
-                await driver.wait(async () => {
-                    return await driver.executeScript('return typeof digitalData !== "undefined" && digitalData.product && digitalData.product[0]');
-                }, timeoutMs);
-                success = true;
-                spinner.succeed('Data loaded successfully');
+                spinner.text = `Attempt ${currentRetry + 1}/${maxRetries}: Loading page and waiting for data (${timeoutMs/1000}s timeout)...`;
+                
+                // Create a timeout promise that will reject after timeoutMs
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error(`Timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
+                });
+                
+                // Create the page load and data load promise
+                const loadPromise = (async () => {
+                    // Load the page
+                    await driver.get(url);
+                    spinner.text = `Page loaded, waiting for data to be available... (${timeoutMs/1000}s total timeout)`;
+                    
+                    // Wait for digitalData to be available - using a very large timeout here
+                    // since our own Promise.race with timeoutPromise will handle the actual timeout
+                    await driver.wait(async () => {
+                        return await driver.executeScript('return typeof digitalData !== "undefined" && digitalData.product && digitalData.product[0]');
+                    }, Number.MAX_SAFE_INTEGER);
+                    
+                    return true;
+                })();
+                
+                // Race the load promise against the timeout
+                success = await Promise.race([loadPromise, timeoutPromise]);
+                spinner.succeed('Page and data loaded successfully');
             } catch (error) {
                 currentRetry++;
                 if (currentRetry >= maxRetries) {
-                    spinner.fail(`Failed to load data after ${maxRetries} attempts`);
+                    spinner.fail(`Failed to load page and data after ${maxRetries} attempts`);
                     throw error;
                 }
                 
@@ -63,6 +79,10 @@ async function runScraper(url) {
                 }
                 
                 spinner.text = `Attempt ${currentRetry}/${maxRetries} failed. Retrying with ${timeoutMs/1000}s timeout...`;
+                
+                // Quit and recreate the driver for a clean retry
+                await driver.quit();
+                driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
             }
         }
 
